@@ -1,0 +1,75 @@
+{
+  "users": [
+    {
+      "name": "alina",
+      "email": "alina@mail.com",
+      "group": "3f1",
+      "role": "admin",
+      "id": "3ccd"
+    },
+    {
+      "id": "b2c1",
+      "name": "jr4i",
+      "email": "kgo43kof@sko.com",
+      "password": "1234567",
+      "group": "g",
+      "role": "user"
+    },
+    {
+      "id": "00a7",
+      "name": "анагш",
+      "email": "аоноп@hyhuh.com",
+      "password": "123456",
+      "group": "hgtu",
+      "role": "user"
+    },
+    {
+      "id": "0344",
+      "name": "arailym",
+      "email": "diysenaliarailym@icloud.com",
+      "password": "1234567",
+      "group": "3f1",
+      "role": "user"
+    },
+    {
+      "id": "c978",
+      "name": "Администратор",
+      "email": "admin@test.com",
+      "group": "Админ",
+      "role": "admin"
+    },
+    {
+      "id": "a8a7",
+      "name": "final",
+      "email": "fhj@f.vo",
+      "password": "123456",
+      "group": "Аллу",
+      "role": "user"
+    },
+    {
+      "id": "e2d0",
+      "name": "alinaaefre",
+      "email": "skoek@f.c",
+      "password": "1234567890",
+      "group": "fg",
+      "role": "user"
+    }
+  ],
+  "exams": [
+    {
+      "userId": 2,
+      "subject": "Базы данных",
+      "date": "2025-12-15",
+      "status": "passed",
+      "score": null,
+      "id": "2"
+    },
+    {
+      "id": "3",
+      "userId": 1,
+      "subject": "Алгоритмы",
+      "date": "2025-12-25",
+      "status": "planned"
+    }
+  ]
+}

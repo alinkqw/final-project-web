@@ -1,0 +1,80 @@
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import { createVuetify } from 'vuetify'
+import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
+import { ru } from 'vuetify/locale'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import 'vuetify/styles'
+import '@mdi/font/css/materialdesignicons.css'
+
+import App from './App.vue'
+import router from './router'
+import { useUserStore } from '@/stores/user'   // добавлено
+
+const vuetify = createVuetify({ 
+  locale: { locale: 'ru', fallback: 'ru', messages: { ru } },
+  icons: { defaultSet: 'mdi', aliases, sets: { mdi } },
+  components, 
+  directives,
+  theme: {
+    defaultTheme: 'examTheme',
+    themes: {
+      examTheme: {
+        colors: {
+          primary: '#1E88E5',
+          secondary: '#26C6DA',
+          error: '#EF5350',
+          success: '#4CAF50',
+          warning: '#FF9800',
+          background: '#F5F5F5'
+        }
+      }
+    }
+  }
+})
+
+const app = createApp(App)
+const pinia = createPinia()
+
+app.use(pinia)
+app.use(router)
+app.use(vuetify)
+
+// Загружаем сохранённого пользователя в Pinia сразу при старте
+const userStore = useUserStore()
+userStore.loadUser()
+
+const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]')
+if (users.length === 0) {
+  const adminUser = {
+    id: 'admin-1',
+    name: 'Администратор',
+    email: 'admin@example.com',
+    password: 'admin123',
+    group: 'Администрация',
+    role: 'admin',
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString(),
+    loginCount: 1,
+    isAuthenticated: true,
+    progress: { 
+      completedTests: 0, 
+      correctAnswers: 0, 
+      totalAnswers: 0, 
+      averageScore: 0 
+    }
+  }
+  
+  users.push(adminUser)
+  localStorage.setItem('registeredUsers', JSON.stringify(users))
+  
+  const { password, ...adminToken } = adminUser
+  localStorage.setItem('currentUser', JSON.stringify(adminToken))
+  
+  console.log('Админ создан')
+  
+  userStore.loadUser()
+}
+
+app.mount('#app')

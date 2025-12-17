@@ -1,0 +1,325 @@
+<template>
+  <v-container fluid fill-height class="pa-0 register-bg">
+    <v-row align="start" justify="center" class="pa-6 mt-10">
+      <v-col cols="12" sm="10" md="8" lg="5" xl="4">
+        <!-- Верхний текстовый блок -->
+        <div class="mb-6 text-center">
+          <h2 class="text-h4 font-weight-bold mb-2 text-white">
+            Create your exam account
+          </h2>
+          <p class="text-body-2 text-white text-medium-emphasis">
+            Join the platform to track your progress and get ready for the state exam.
+          </p>
+        </div>
+
+        <v-card class="pa-6 elevation-16 register-card" rounded="xl">
+          <!-- Иконка -->
+          <div class="d-flex justify-center mb-4">
+            <v-avatar size="56" color="primary" class="elevation-3">
+              <v-icon size="32" color="white">mdi-shield-check</v-icon>
+            </v-avatar>
+          </div>
+
+          <v-card-title class="text-h6 font-weight-bold mb-1 text-center">
+            Create your account
+          </v-card-title>
+          <v-card-subtitle class="text-body-2 mb-5 text-center text-medium-emphasis">
+            It takes less than a minute.
+          </v-card-subtitle>
+
+          <!-- Ошибка -->
+          <v-alert 
+            v-if="errorMessage" 
+            type="error" 
+            variant="tonal" 
+            density="compact" 
+            class="mb-4"
+          >
+            {{ errorMessage }}
+          </v-alert>
+
+          <!-- Успех -->
+          <v-alert 
+            v-if="successMessage" 
+            type="success" 
+            variant="tonal" 
+            density="compact" 
+            class="mb-4"
+          >
+            {{ successMessage }}
+          </v-alert>
+
+          <v-form @submit.prevent="handleRegister">
+            <v-text-field
+              v-model="name"
+              label="Full name"
+              prepend-inner-icon="mdi-account-outline"
+              variant="outlined"
+              :rules="nameRules"
+              class="mb-3"
+              density="comfortable"
+            />
+
+            <v-text-field
+              v-model="email"
+              label="Email address"
+              prepend-inner-icon="mdi-email-outline"
+              variant="outlined"
+              :rules="emailRules"
+              class="mb-3"
+              density="comfortable"
+            />
+
+            <v-text-field
+              v-model="group"
+              label="Group (optional)"
+              prepend-inner-icon="mdi-school-outline"
+              variant="outlined"
+              class="mb-3"
+              density="comfortable"
+            />
+
+            <v-text-field
+              v-model="password"
+              label="Password"
+              prepend-inner-icon="mdi-lock-outline"
+              :type="showPassword ? 'text' : 'password'"
+              variant="outlined"
+              :rules="passwordRules"
+              class="mb-3"
+              density="comfortable"
+              :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+              @click:append-inner="showPassword = !showPassword"
+            />
+
+            <v-text-field
+              v-model="confirmPassword"
+              label="Confirm password"
+              prepend-inner-icon="mdi-lock-check-outline"
+              :type="showConfirmPassword ? 'text' : 'password'"
+              variant="outlined"
+              :rules="confirmRules"
+              class="mb-5"
+              density="comfortable"
+              :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
+              @click:append-inner="showConfirmPassword = !showConfirmPassword"
+            />
+
+            <v-btn
+              type="submit"
+              color="primary"
+              block
+              size="large"
+              :loading="loading"
+              :disabled="!isFormValid"
+              class="text-none font-weight-bold mb-1"
+            >
+              SIGN UP
+            </v-btn>
+
+            <div class="text-caption text-medium-emphasis text-center mt-1">
+              By signing up you agree to our exam preparation policy.
+            </div>
+          </v-form>
+
+          <v-divider class="my-5" />
+
+          <v-card-text class="text-center">
+            <span class="text-body-2">Already have an account?</span>
+            <v-btn
+              variant="text"
+              size="small"
+              class="ml-1 text-none font-weight-bold"
+              @click="goToLogin"
+            >
+              Log in
+            </v-btn>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+
+const router = useRouter()
+const userStore = useUserStore()
+
+const name = ref('')
+const email = ref('')
+const group = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
+const loading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+
+const nameRules = [v => !!v || 'Имя обязательно']
+const emailRules = [
+  v => !!v || 'Email обязателен',
+  v => /.+@.+\..+/.test(v) || 'Email некорректен'
+]
+const passwordRules = [
+  v => !!v || 'Пароль обязателен',
+  v => (v && v.length >= 6) || 'Минимум 6 символов'
+]
+const confirmRules = [
+  v => !!v || 'Подтверждение пароля обязательно',
+  v => v === password.value || 'Пароли не совпадают'
+]
+
+const isFormValid = computed(() => {
+  return name.value && 
+         email.value && 
+         password.value && 
+         confirmPassword.value && 
+         password.value === confirmPassword.value
+})
+
+// Сброс ошибок при изменении полей
+watch([name, email, password, confirmPassword], () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+})
+
+const goToLogin = () => {
+  router.push('/login')
+}
+
+const handleRegister = async () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+  
+  // Проверка правил формы
+  if (!name.value || !email.value || !password.value || !confirmPassword.value) {
+    errorMessage.value = 'Заполните все обязательные поля'
+    return
+  }
+  
+  if (password.value !== confirmPassword.value) {
+    errorMessage.value = 'Пароли не совпадают'
+    return
+  }
+
+  if (password.value.length < 6) {
+    errorMessage.value = 'Пароль должен содержать минимум 6 символов'
+    return
+  }
+
+  loading.value = true
+  
+  try {
+    // ✅ СОЗДАЕМ ПОЛЬЗОВАТЕЛЯ
+    const newUser = {
+      id: Date.now().toString(), // Уникальный ID
+      name: name.value.trim(),
+      email: email.value.trim().toLowerCase(),
+      password: password.value, // ⚠️ Сохраняем пароль как есть (в реальном приложении нужно хэшировать!)
+      group: group.value.trim() || 'Не указана',
+      role: 'user', // Все новые пользователи - обычные пользователи
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      loginCount: 1,
+      isActive: true,
+      isAuthenticated: true,
+      progress: {
+        completedTests: 0,
+        correctAnswers: 0,
+        totalAnswers: 0,
+        averageScore: 0
+      }
+    }
+
+    console.log('🔍 Создаем нового пользователя:', newUser)
+    
+    // ✅ СОХРАНЯЕМ В LOCALSTORAGE ЧЕРЕЗ ПРОСТУЮ ФУНКЦИЮ
+    saveUserToLocalStorage(newUser)
+    
+    // ✅ АВТОМАТИЧЕСКИ ЛОГИНИМ ПОЛЬЗОВАТЕЛЯ
+    userStore.login(newUser);
+    window.dispatchEvent(new Event('users:updated'))
+    
+    console.log('✅ Пользователь зарегистрирован и вошел в систему!')
+    
+    successMessage.value = 'Регистрация успешна! Вы будете перенаправлены...'
+    
+    // Ждем 2 секунды и переходим на главную
+    setTimeout(() => {
+      router.push('/')
+    }, 2000)
+    
+  } catch (e) {
+    console.error('Ошибка регистрации:', e)
+    errorMessage.value = 'Ошибка регистрации. Попробуйте позже.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// ✅ ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ ПОЛЬЗОВАТЕЛЯ В LOCALSTORAGE
+const saveUserToLocalStorage = (userData) => {
+  try {
+    // Получаем существующих пользователей
+    let existingUsers = []
+    const savedUsers = localStorage.getItem('registeredUsers')
+    
+    if (savedUsers) {
+      existingUsers = JSON.parse(savedUsers)
+    }
+    
+    // Проверяем, нет ли уже пользователя с таким email
+    const userExists = existingUsers.find(u => u.email === userData.email)
+    if (userExists) {
+      throw new Error('Пользователь с таким email уже существует')
+    }
+    
+    // Добавляем нового пользователя
+    existingUsers.push(userData)
+    
+    // Сохраняем обновленный список
+    localStorage.setItem('registeredUsers', JSON.stringify(existingUsers))
+    
+    console.log('📁 Пользователь сохранен в localStorage:', userData.email)
+    console.log('📊 Всего пользователей:', existingUsers.length)
+    
+    // Также сохраняем отдельно для тестов (в allUsers как раньше)
+    let allUsers = []
+    const savedAllUsers = localStorage.getItem('allUsers')
+    if (savedAllUsers) {
+      allUsers = JSON.parse(savedAllUsers)
+    }
+    allUsers.push(userData)
+    localStorage.setItem('allUsers', JSON.stringify(allUsers))
+    
+  } catch (error) {
+    console.error('Ошибка сохранения пользователя:', error)
+    throw error
+  }
+}
+</script>
+
+<style scoped>
+.register-bg {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.register-card {
+  border-radius: 24px;
+  background-color: #ffffff;
+  max-width: 520px;
+  margin: 0 auto;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+}
+
+.text-white {
+  color: white !important;
+}
+</style>

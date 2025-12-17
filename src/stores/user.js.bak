@@ -1,0 +1,235 @@
+/* filepath: /Users/admin/exam-prep-app/src/stores/user.js */
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+
+export const useUserStore = defineStore('user', () => {
+  const user = ref(null)
+
+  const loadUser = () => {
+    try {
+      const saved = localStorage.getItem('currentUser')
+      if (saved) {
+        const parsedUser = JSON.parse(saved)
+
+        // Нормализуем поля для стабильных проверок
+        parsedUser.role = (parsedUser.role || '').toString()
+        parsedUser.isAuthenticated = parsedUser.isAuthenticated === true || parsedUser.isAuthenticated === 'true' || !!parsedUser.token || !!parsedUser.id
+
+        console.log('👤 Пользователь загружен:', {
+          email: parsedUser.email,
+          role: parsedUser.role,
+          hasToken: !!parsedUser.isAuthenticated
+        })
+        user.value = parsedUser
+      } else {
+        console.log('👤 Нет сохраненного пользователя')
+        user.value = null
+      }
+    } catch (e) {
+      console.error('Ошибка загрузки пользователя:', e)
+      user.value = null
+    }
+  }
+
+  const getRegisteredUsers = () => {
+    try {
+      const saved = localStorage.getItem('registeredUsers')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      console.error('Ошибка получения зарегистрированных пользователей:', e)
+      return []
+    }
+  }
+
+  // Регистрация нового пользователя
+  const register = (userData) => {
+    try {
+      const { name, email, password, group } = userData
+      
+      if (!name || !email || !password) {
+        return { success: false, message: 'Заполните все обязательные поля' }
+      }
+      
+      if (password.length < 6) {
+        return { success: false, message: 'Пароль должен быть не менее 6 символов' }
+      }
+      
+      const existingUsers = getRegisteredUsers()
+      
+      if (existingUsers.some(u => u.email === email.toLowerCase())) {
+        return { success: false, message: 'Пользователь с таким email уже существует' }
+      }
+      
+      const newUser = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        password: password,
+        group: group?.trim() || '',
+        role: 'user',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        loginCount: 1,
+        isAuthenticated: true,
+        progress: {
+          completedTests: 0,
+          correctAnswers: 0,
+          totalAnswers: 0,
+          averageScore: 0
+        }
+      }
+      
+      existingUsers.push(newUser)
+      localStorage.setItem('registeredUsers', JSON.stringify(existingUsers))
+      
+      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]')
+      allUsers.push(newUser)
+      localStorage.setItem('allUsers', JSON.stringify(allUsers))
+      
+      login(newUser)
+      
+      return { 
+        success: true, 
+        message: 'Регистрация успешна!',
+        user: newUser 
+      }
+      
+    } catch (e) {
+      console.error('Ошибка регистрации:', e)
+      return { success: false, message: 'Ошибка регистрации' }
+    }
+  }
+
+  // Вход пользователя (терпим к формату паролей: plain / base64)
+  const login = (loginData) => {
+    try {
+      if (loginData && loginData.id && loginData.email) {
+        const { password, ...userWithoutPassword } = loginData
+        
+        const safeUser = {
+          ...userWithoutPassword,
+          role: (userWithoutPassword.role || 'user').toString(),
+          isAuthenticated: true
+        }
+        
+        console.log('✅ Вход через регистрацию:', {
+          email: safeUser.email,
+          role: safeUser.role,
+          hasToken: safeUser.isAuthenticated
+        })
+        
+        user.value = safeUser
+        localStorage.setItem('currentUser', JSON.stringify(safeUser))
+        return { success: true, user: safeUser }
+      }
+
+      const { email, password } = loginData || {}
+      if (!email || !password) {
+        return { success: false, message: 'Введите email и пароль' }
+      }
+
+      const registeredUsers = getRegisteredUsers()
+      const searchEmail = email.toLowerCase().trim()
+
+      const foundUser = registeredUsers.find(u => {
+        if (!u || (u.email || '').toLowerCase().trim() !== searchEmail) return false
+
+        // прямое совпадение
+        if (u.password === password) return true
+
+        // совпадение с base64 от вводимого
+        try { if (u.password === btoa(password)) return true } catch (e) {}
+
+        // совпадение если stored — base64 и atob(stored) === input
+        try { if (atob(u.password) === password) return true } catch (e) {}
+
+        return false
+      })
+
+      if (!foundUser) {
+        return { success: false, message: 'Неверный email или пароль' }
+      }
+
+      foundUser.lastLogin = new Date().toISOString()
+      foundUser.loginCount = (foundUser.loginCount || 0) + 1
+
+      const updatedUsers = registeredUsers.map(u => u.id === foundUser.id ? foundUser : u)
+      localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers))
+
+      const { password: _, ...userWithoutPassword } = foundUser
+      const safeUser = { ...userWithoutPassword, isAuthenticated: true }
+
+      console.log('✅ Успешный вход:', {
+        email: safeUser.email,
+        role: safeUser.role,
+        hasToken: safeUser.isAuthenticated
+      })
+
+      user.value = safeUser
+      localStorage.setItem('currentUser', JSON.stringify(safeUser))
+
+      return { success: true, user: safeUser }
+
+    } catch (e) {
+      console.error('Ошибка входа:', e)
+      return { success: false, message: 'Ошибка входа' }
+    }
+  }
+
+  const logout = () => {
+    console.log('🚪 Выход из системы')
+    user.value = null
+    localStorage.removeItem('currentUser')
+  }
+
+  const getAllUsers = () => {
+    try {
+      const users = getRegisteredUsers()
+      return users.map(({ password, ...user }) => user)
+    } catch (e) {
+      console.error('Ошибка получения пользователей:', e)
+      return []
+    }
+  }
+
+  const addUser = (newUser) => {
+    const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]')
+    allUsers.push(newUser)
+    localStorage.setItem('allUsers', JSON.stringify(allUsers))
+  }
+
+  const isAuthenticated = () => {
+    const hasUser = !!user.value
+    const hasToken = user.value?.isAuthenticated === true
+    console.log('🔐 Проверка аутентификации:', {
+      естьПользователь: hasUser,
+      естьТокен: hasToken,
+      пользователь: user.value?.email,
+      роль: user.value?.role
+    })
+    return hasUser || hasToken
+  }
+  
+  const isAdmin = () => {
+    const role = (user.value?.role || '').toString()
+    const result = /admin|админ|администратор/i.test(role)
+    console.log('👑 Проверка роли админа:', {
+      роль: role,
+      результат: result,
+      пользователь: user.value?.email
+    })
+    return result
+  }
+
+  return { 
+    user, 
+    loadUser,
+    register,
+    login,
+    logout,
+    getAllUsers,
+    addUser,
+    isAuthenticated, 
+    isAdmin 
+  }
+})

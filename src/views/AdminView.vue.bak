@@ -1,0 +1,1119 @@
+<template>
+  <v-container fluid class="super-admin-panel">
+    <!-- ОТЛАДОЧНАЯ ИНФОРМАЦИЯ -->
+    <v-alert
+      v-if="debugMode"
+      type="info"
+      variant="tonal"
+      class="mb-4"
+    >
+      <div class="d-flex justify-space-between align-center">
+        <div>
+          <strong>Отладка:</strong> Пользователей: {{ users.length }} | 
+          Последнее обновление: {{ lastLoadTime || 'никогда' }}
+        </div>
+        <v-btn size="small" @click="debugUsers" color="primary">
+          🔍 Показать в консоли
+        </v-btn>
+      </div>
+    </v-alert>
+
+    <!-- HEADER -->
+    <v-row class="mb-8">
+      <v-col>
+        <div class="header-content">
+          <div class="header-text">
+            <h1 class="text-h3 font-weight-bold mb-2 gradient-text">
+              <v-icon start size="40" color="primary">mdi-shield-crown</v-icon>
+              Супер Админ Панель
+            </h1>
+            <p class="text-body-1 text-medium-emphasis">
+              <v-icon size="16" class="mr-1">mdi-account-group</v-icon>
+              Управление пользователями и экзаменами 
+              <span class="font-weight-bold text-primary">{{ users.length }}</span> пользователей
+            </p>
+          </div>
+          <div class="header-actions">
+            <v-btn
+              color="blue-darken-1"
+              variant="tonal"
+              prepend-icon="mdi-refresh"
+              @click="loadAllData"
+              :loading="globalLoading"
+              class="action-btn"
+            >
+              Обновить все
+            </v-btn>
+            <v-btn
+              color="green-darken-1"
+              prepend-icon="mdi-account-plus"
+              @click="openCreateUser"
+              class="action-btn"
+              elevation="2"
+            >
+              Новый пользователь
+            </v-btn>
+            <v-btn
+              color="indigo-darken-1"
+              variant="tonal"
+              prepend-icon="mdi-api"
+              @click="testApiEndpoints"
+              class="action-btn"
+            >
+              Тест API
+            </v-btn>
+          </div>
+        </div>
+
+        <!-- СТАТИСТИКА -->
+        <v-row class="stats-row">
+          <v-col v-for="stat in stats" :key="stat.title" cols="12" sm="6" md="3">
+            <v-card 
+              class="stat-card pa-4 elevation-3" 
+              height="100%"
+              :class="stat.colorClass"
+              :ripple="false"
+            >
+              <div class="d-flex align-center justify-space-between">
+                <div>
+                  <div class="text-h4 font-weight-bold mb-1">
+                    {{ stat.count }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ stat.title }}
+                  </div>
+                </div>
+                <v-icon 
+                  :color="stat.iconColor" 
+                  size="40"
+                  class="stat-icon"
+                >
+                  {{ stat.icon }}
+                </v-icon>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-col>
+    </v-row>
+
+    <!-- ТАБЫ -->
+    <v-card class="main-card elevation-4">
+      <v-tabs 
+        v-model="activeTab" 
+        color="primary" 
+        grow
+        class="rounded-t-lg"
+      >
+        <v-tab value="users">
+          <v-icon start>mdi-account-group</v-icon>
+          Пользователи
+          <v-chip size="small" color="primary" class="ml-2">
+            {{ users.length }}
+          </v-chip>
+        </v-tab>
+        <v-tab value="exams">
+          <v-icon start>mdi-book-check</v-icon>
+          Экзамены
+          <v-chip size="small" color="green" class="ml-2">
+            {{ exams.length }}
+          </v-chip>
+        </v-tab>
+      </v-tabs>
+
+      <v-divider></v-divider>
+
+      <!-- КОНТЕНТ ТАБОВ -->
+      <v-window v-model="activeTab">
+        <!-- ПОЛЬЗОВАТЕЛИ -->
+        <v-window-item value="users">
+          <div class="pa-6">
+            <div class="d-flex justify-space-between align-center mb-6">
+              <div>
+                <h3 class="text-h5 font-weight-bold text-grey-darken-3">
+                  <v-icon start color="primary">mdi-account-group</v-icon>
+                  Все пользователи
+                </h3>
+                <p class="text-caption text-medium-emphasis mt-1">
+                  Управление учетными записями пользователей системы
+                </p>
+              </div>
+              <div class="d-flex align-center gap-2">
+                <v-text-field
+                  v-model="userSearch"
+                  placeholder="Поиск по имени, email или группе..."
+                  prepend-inner-icon="mdi-magnify"
+                  variant="outlined"
+                  density="compact"
+                  style="max-width: 300px;"
+                  hide-details
+                />
+                <v-btn 
+                  color="success" 
+                  prepend-icon="mdi-plus" 
+                  @click="openCreateUser"
+                  class="add-btn"
+                  size="large"
+                >
+                  Добавить
+                </v-btn>
+              </div>
+            </div>
+
+            <v-data-table
+              :headers="userHeaders"
+              :items="filteredUsers"
+              :loading="loading.users"
+              class="data-table elevation-1"
+              hover
+              :items-per-page="15"
+              fixed-header
+            >
+              <template #loading>
+                <v-row justify="center" align="center" class="py-8">
+                  <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                  <span class="ml-3">Загрузка пользователей...</span>
+                </v-row>
+              </template>
+
+              <template #item.name="{ item }">
+                <div class="d-flex align-center">
+                  <v-avatar size="32" :color="item.role === 'admin' ? 'deep-orange' : 'blue'" class="mr-3">
+                    <span class="text-white">{{ getInitials(item.name) }}</span>
+                  </v-avatar>
+                  <div>
+                    <div class="font-weight-medium">{{ item.name }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ item.email }}</div>
+                  </div>
+                </div>
+              </template>
+
+              <template #item.createdAt="{ item }">
+                <div class="text-no-wrap">
+                  {{ formatDate(item.createdAt) }}
+                </div>
+              </template>
+
+              <template #item.role="{ item }">
+                <v-chip
+                  :color="item.role === 'admin' ? 'deep-orange' : 'blue'"
+                  size="small"
+                  class="font-weight-bold"
+                  :prepend-icon="item.role === 'admin' ? 'mdi-shield-account' : 'mdi-account'"
+                >
+                  {{ item.role === 'admin' ? 'Администратор' : 'Студент' }}
+                </v-chip>
+              </template>
+
+              <template #item.actions="{ item }">
+                <div class="d-flex gap-2">
+                  <v-tooltip text="Редактировать" location="top">
+                    <template v-slot:activator="{ props }">
+                      <v-btn 
+                        size="small" 
+                        color="primary" 
+                        variant="tonal" 
+                        v-bind="props"
+                        @click="editUser(item)"
+                        icon
+                      >
+                        <v-icon>mdi-pencil</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
+                  
+                  <v-tooltip text="Удалить" location="top">
+                    <template v-slot:activator="{ props }">
+                      <v-btn 
+                        size="small" 
+                        color="error" 
+                        variant="tonal" 
+                        v-bind="props"
+                        @click="confirmDeleteUser(item)"
+                        icon
+                      >
+                        <v-icon>mdi-delete</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
+                </div>
+              </template>
+
+              <template #no-data>
+                <div class="py-8 text-center">
+                  <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-account-off</v-icon>
+                  <div class="text-h6 text-grey">Пользователи не найдены</div>
+                  <v-btn color="primary" @click="openCreateUser" class="mt-4">
+                    Добавить первого пользователя
+                  </v-btn>
+                </div>
+              </template>
+            </v-data-table>
+          </div>
+        </v-window-item>
+
+        <!-- ЭКЗАМЕНЫ -->
+        <v-window-item value="exams">
+          <div class="pa-6">
+            <div class="d-flex justify-space-between align-center mb-6">
+              <div>
+                <h3 class="text-h5 font-weight-bold text-grey-darken-3">
+                  <v-icon start color="green">mdi-book-check</v-icon>
+                  Экзамены
+                </h3>
+                <p class="text-caption text-medium-emphasis mt-1">
+                  Управление экзаменами и результатами
+                </p>
+              </div>
+              <div class="d-flex align-center gap-4">
+                <v-select
+                  v-model="filterStatus"
+                  :items="statusFilters"
+                  item-title="title"
+                  item-value="value"
+                  label="Фильтр по статусу"
+                  clearable
+                  prepend-inner-icon="mdi-filter"
+                  style="min-width: 200px; max-width: 250px;"
+                  variant="outlined"
+                  density="compact"
+                />
+              </div>
+            </div>
+
+            <v-data-table
+              :headers="examHeaders"
+              :items="filteredExams"
+              :loading="loading.exams"
+              class="data-table elevation-1"
+              hover
+              :items-per-page="15"
+            >
+              <template #loading>
+                <v-row justify="center" align="center" class="py-8">
+                  <v-progress-circular indeterminate color="green"></v-progress-circular>
+                  <span class="ml-3">Загрузка экзаменов...</span>
+                </v-row>
+              </template>
+
+              <template #item.user="{ item }">
+                <div class="d-flex align-center">
+                  <v-avatar size="32" color="blue" class="mr-3">
+                    <span class="text-white">{{ getInitials(getUserName(item.userId)) }}</span>
+                  </v-avatar>
+                  <div>
+                    <div class="font-weight-medium">{{ getUserName(item.userId) }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ getUserEmail(item.userId) }}</div>
+                  </div>
+                </div>
+              </template>
+
+              <template #item.status="{ item }">
+                <v-chip 
+                  :color="getStatusColor(item.status)" 
+                  size="small"
+                  :prepend-icon="getStatusIcon(item.status)"
+                  class="font-weight-medium"
+                >
+                  {{ getStatusLabel(item.status) }}
+                </v-chip>
+              </template>
+
+              <template #item.score="{ item }">
+                <div class="d-flex align-center">
+                  <v-progress-circular
+                    v-if="item.score !== undefined"
+                    :model-value="item.score"
+                    :color="getScoreColor(item.score)"
+                    size="30"
+                    width="3"
+                    class="mr-2"
+                  >
+                    {{ item.score }}
+                  </v-progress-circular>
+                  <span v-else class="text-grey">—</span>
+                </div>
+              </template>
+
+              <template #item.actions="{ item }">
+                <div class="d-flex gap-2">
+                  <v-btn 
+                    size="small" 
+                    color="primary" 
+                    variant="tonal" 
+                    @click="editExam(item)"
+                    prepend-icon="mdi-pencil"
+                  >
+                    Редактировать
+                  </v-btn>
+                  <v-btn 
+                    size="small" 
+                    color="error" 
+                    variant="tonal" 
+                    @click="confirmDeleteExam(item)"
+                    prepend-icon="mdi-delete"
+                  >
+                    Удалить
+                  </v-btn>
+                </div>
+              </template>
+
+              <template #no-data>
+                <div class="py-8 text-center">
+                  <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-book-remove</v-icon>
+                  <div class="text-h6 text-grey">Экзамены не найдены</div>
+                  <p class="text-medium-emphasis mt-2">Создайте экзамен или проверьте фильтры</p>
+                </div>
+              </template>
+            </v-data-table>
+          </div>
+        </v-window-item>
+      </v-window>
+    </v-card>
+
+    <!-- МОДАЛКА СОЗДАНИЯ/РЕДАКТИРОВАНИЯ ПОЛЬЗОВАТЕЛЯ -->
+    <v-dialog v-model="showUserDialog" max-width="600" persistent>
+      <v-card class="dialog-card">
+        <v-card-title class="dialog-header">
+          <div class="d-flex align-center">
+            <v-icon :color="editingUser ? 'warning' : 'success'" class="mr-3">
+              {{ editingUser ? 'mdi-account-edit' : 'mdi-account-plus' }}
+            </v-icon>
+            <span class="text-h6 font-weight-bold">
+              {{ editingUser ? 'Редактирование пользователя' : 'Создание нового пользователя' }}
+            </span>
+          </div>
+          <v-btn icon @click="closeUserDialog" variant="text" size="small">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        
+        <v-divider></v-divider>
+        
+        <v-card-text class="pt-6">
+          <v-form ref="userFormRef" v-model="userFormValid" @submit.prevent="saveUser">
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="userForm.name"
+                  label="ФИО *"
+                  :rules="requiredRule"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-account"
+                  placeholder="Иванов Иван Иванович"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="userForm.email"
+                  label="Email *"
+                  :rules="emailRule"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-email"
+                  placeholder="example@mail.com"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="userForm.group"
+                  label="Группа"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-account-group"
+                  placeholder="ИТ-21"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="userForm.role"
+                  label="Роль *"
+                  :items="roles"
+                  item-title="title"
+                  item-value="value"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-shield-account"
+                />
+              </v-col>
+              <v-col v-if="!editingUser" cols="12" md="6">
+                <v-text-field
+                  v-model="userForm.password"
+                  label="Пароль *"
+                  type="password"
+                  :rules="passwordRules"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-lock"
+                  placeholder="Минимум 6 символов"
+                />
+              </v-col>
+              <v-col v-if="!editingUser" cols="12" md="6">
+                <v-text-field
+                  v-model="userForm.confirmPassword"
+                  label="Подтверждение пароля *"
+                  type="password"
+                  :rules="confirmPasswordRules"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-lock-check"
+                  placeholder="Повторите пароль"
+                />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+        
+        <v-divider></v-divider>
+        
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn @click="closeUserDialog" variant="tonal" size="large">
+            Отмена
+          </v-btn>
+          <v-btn
+            color="primary"
+            @click="saveUser"
+            :loading="savingUser"
+            :disabled="!userFormValid"
+            size="large"
+            prepend-icon="mdi-check"
+          >
+            {{ editingUser ? 'Обновить' : 'Создать' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- УВЕДОМЛЕНИЯ -->
+    <v-snackbar
+      v-model="showSnackbar"
+      :color="snackbarColor"
+      :timeout="4000"
+      location="top right"
+    >
+      <div class="d-flex align-center">
+        <v-icon class="mr-3">{{ snackbarIcon }}</v-icon>
+        {{ snackbarMessage }}
+      </div>
+      <template v-slot:actions>
+        <v-btn icon @click="showSnackbar = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </template>
+    </v-snackbar>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, computed, reactive, onMounted, nextTick } from 'vue'
+import { apiGet, apiPost, apiPut, apiDelete } from '@/api'
+
+// === ОТЛАДКА ===
+const debugMode = ref(true)
+const lastLoadTime = ref(null)
+const userSearch = ref('')
+
+// === ОСНОВНЫЕ ДАННЫЕ ===
+const users = ref([])
+const exams = ref([])
+const loading = reactive({ users: false, exams: false })
+const globalLoading = ref(false)
+
+// === ТАБЫ ===
+const activeTab = ref('users')
+const filterStatus = ref('')
+
+// === МОДАЛКА ПОЛЬЗОВАТЕЛЯ ===
+const showUserDialog = ref(false)
+const editingUser = ref(null)
+const userFormRef = ref(null)
+const userFormValid = ref(false)
+const savingUser = ref(false)
+
+const userForm = ref({
+  name: '',
+  email: '',
+  group: '',
+  role: 'user',
+  password: '',
+  confirmPassword: ''
+})
+
+// === УВЕДОМЛЕНИЯ ===
+const showSnackbar = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('success')
+const snackbarIcon = ref('mdi-check-circle')
+
+// === HEADERS ===
+const userHeaders = [
+  { title: 'Пользователь', key: 'name', sortable: true, width: '300px' },
+  { title: 'Группа', key: 'group', sortable: true },
+  { title: 'Дата регистрации', key: 'createdAt', sortable: true },
+  { title: 'Роль', key: 'role', sortable: true },
+  { title: 'Действия', key: 'actions', align: 'end', sortable: false }
+]
+
+const examHeaders = [
+  { title: 'Студент', key: 'user', sortable: true, width: '250px' },
+  { title: 'Предмет', key: 'subject', sortable: true },
+  { title: 'Дата экзамена', key: 'date', sortable: true },
+  { title: 'Статус', key: 'status', sortable: true },
+  { title: 'Балл', key: 'score', sortable: true },
+  { title: 'Действия', key: 'actions', align: 'end', sortable: false }
+]
+
+// === СПРАВОЧНИКИ ===
+const roles = [
+  { title: 'Студент', value: 'user' },
+  { title: 'Администратор', value: 'admin' }
+]
+
+const statusFilters = [
+  { title: 'Все статусы', value: '' },
+  { title: 'Запланирован', value: 'planned', color: 'warning' },
+  { title: 'Пройден', value: 'passed', color: 'success' },
+  { title: 'Провален', value: 'failed', color: 'error' }
+]
+
+// === ВАЛИДАЦИЯ ===
+const requiredRule = [v => !!v || 'Обязательное поле']
+const emailRule = [
+  v => !!v || 'Обязательное поле',
+  v => /.+@.+\..+/.test(v) || 'Некорректный email'
+]
+const passwordRules = [
+  v => !!v || 'Обязательное поле',
+  v => v.length >= 6 || 'Минимум 6 символов'
+]
+const confirmPasswordRules = [
+  v => !!v || 'Обязательное поле',
+  v => v === userForm.value.password || 'Пароли не совпадают'
+]
+
+// === COMPUTED ===
+const stats = computed(() => {
+  const students = users.value.filter(u => u.role === 'user')
+  const admins = users.value.filter(u => u.role === 'admin')
+  const totalUsers = users.value.length
+  const totalExams = exams.value.length
+  
+  return [
+    {
+      title: 'Студентов',
+      count: students.length,
+      icon: 'mdi-school',
+      iconColor: 'blue',
+      colorClass: 'stat-card-blue'
+    },
+    {
+      title: 'Администраторов',
+      count: admins.length,
+      icon: 'mdi-shield-account',
+      iconColor: 'deep-orange',
+      colorClass: 'stat-card-orange'
+    },
+    {
+      title: 'Всего экзаменов',
+      count: totalExams,
+      icon: 'mdi-book-multiple',
+      iconColor: 'green',
+      colorClass: 'stat-card-green'
+    },
+    {
+      title: 'Проваленных',
+      count: exams.value.filter(e => e.status === 'failed').length,
+      icon: 'mdi-close-circle',
+      iconColor: 'red',
+      colorClass: 'stat-card-red'
+    }
+  ]
+})
+
+const filteredUsers = computed(() => {
+  if (!userSearch.value) return users.value
+  
+  const search = userSearch.value.toLowerCase()
+  return users.value.filter(user =>
+    user.name?.toLowerCase().includes(search) ||
+    user.email?.toLowerCase().includes(search) ||
+    user.group?.toLowerCase().includes(search)
+  )
+})
+
+const filteredExams = computed(() => {
+  if (!filterStatus.value) return exams.value
+  return exams.value.filter(e => e.status === filterStatus.value)
+})
+
+// === УТИЛИТЫ ===
+const formatDate = date => {
+  if (!date) return 'Не указано'
+  return new Date(date).toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const getInitials = (name) => {
+  if (!name) return '??'
+  return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
+}
+
+const getUserName = userId => {
+  const user = users.value.find(u => u.id == userId || u._id == userId)
+  return user?.name || 'Неизвестно'
+}
+
+const getUserEmail = userId => {
+  const user = users.value.find(u => u.id == userId || u._id == userId)
+  return user?.email || ''
+}
+
+const getStatusColor = status => ({
+  planned: 'warning',
+  passed: 'success',
+  failed: 'error'
+}[status] || 'grey')
+
+const getStatusIcon = status => ({
+  planned: 'mdi-clock-outline',
+  passed: 'mdi-check-circle-outline',
+  failed: 'mdi-close-circle-outline'
+}[status] || 'mdi-help-circle')
+
+const getStatusLabel = status => ({
+  planned: 'Запланирован',
+  passed: 'Пройден',
+  failed: 'Провален'
+}[status] || status)
+
+const getScoreColor = score => {
+  if (score >= 90) return 'success'
+  if (score >= 70) return 'warning'
+  if (score >= 60) return 'orange'
+  return 'error'
+}
+
+const showNotification = (message, color = 'success', icon = 'mdi-check-circle') => {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+  snackbarIcon.value = icon
+  showSnackbar.value = true
+}
+
+const debugUsers = () => {
+  console.log('🔍 Текущие пользователи:', users.value)
+  console.log('📊 Всего:', users.value.length)
+  console.log('📋 Пример:', users.value[0])
+}
+
+// === ЗАГРУЗКА ДАННЫХ ===
+const loadUsers = async () => {
+  loading.users = true
+  console.log('🔄 Загрузка пользователей с сервера...')
+  
+  try {
+    const response = await apiGet('/users')
+    console.log('📥 Ответ от /users:', response)
+    
+    if (Array.isArray(response)) {
+      // Преобразуем ответ сервера в единый формат
+      users.value = response.map(user => {
+        // Определяем ID пользователя
+        const id = user.id || user._id || user.userId
+        // Определяем имя
+        const name = user.name || user.username || user.fullName || 'Без имени'
+        // Определяем группу
+        const group = user.group || user.class || user.studentGroup || ''
+        // Определяем email
+        const email = user.email || user.mail || 'Нет email'
+        // Определяем роль
+        const role = user.role || user.type || 'user'
+        // Определяем дату создания
+        const createdAt = user.createdAt || user.createdDate || user.registrationDate || new Date().toISOString()
+        
+        return {
+          id,
+          name,
+          email,
+          group,
+          role,
+          createdAt
+        }
+      })
+      
+      console.log('✅ Преобразовано пользователей:', users.value.length)
+      lastLoadTime.value = new Date().toLocaleTimeString()
+      showNotification(`Загружено ${users.value.length} пользователей`, 'success')
+    } else {
+      console.warn('⚠️ API вернул не массив:', response)
+      users.value = []
+      showNotification('Ошибка: API вернул неверный формат', 'error')
+    }
+    
+  } catch (error) {
+    console.error('❌ Ошибка загрузки пользователей:', error)
+    showNotification('Ошибка загрузки пользователей', 'error', 'mdi-alert-circle')
+  } finally {
+    loading.users = false
+  }
+}
+
+const loadExams = async () => {
+  loading.exams = true
+  try {
+    const response = await apiGet('/exams')
+    exams.value = Array.isArray(response) ? response : []
+    console.log('✅ Загружено экзаменов:', exams.value.length)
+  } catch (error) {
+    console.error('❌ Ошибка загрузки экзаменов:', error)
+  } finally {
+    loading.exams = false
+  }
+}
+
+const loadAllData = async () => {
+  globalLoading.value = true
+  console.log('🚀 Загрузка всех данных...')
+  
+  try {
+    await Promise.all([
+      loadUsers(),
+      loadExams()
+    ])
+  } catch (error) {
+    console.error('Ошибка загрузки данных:', error)
+  } finally {
+    globalLoading.value = false
+  }
+}
+
+// === ТЕСТИРОВАНИЕ API ===
+const testApiEndpoints = async () => {
+  showNotification('Тестирование API...', 'info', 'mdi-api')
+  
+  try {
+    const usersResponse = await apiGet('/users')
+    console.log('✅ /users:', usersResponse)
+    
+    if (Array.isArray(usersResponse)) {
+      showNotification(`API работает. Пользователей: ${usersResponse.length}`, 'success')
+    } else {
+      showNotification('API вернул не массив', 'warning')
+    }
+  } catch (error) {
+    console.error('❌ Ошибка API:', error)
+    showNotification(`Ошибка API: ${error.message}`, 'error', 'mdi-alert-circle')
+  }
+}
+
+// === ПОЛЬЗОВАТЕЛИ ===
+const openCreateUser = () => {
+  editingUser.value = null
+  userForm.value = { 
+    name: '', 
+    email: '', 
+    group: '', 
+    role: 'user', 
+    password: '',
+    confirmPassword: ''
+  }
+  showUserDialog.value = true
+  nextTick(() => userFormRef.value?.resetValidation())
+}
+
+const editUser = user => {
+  editingUser.value = user
+  userForm.value = {
+    name: user.name,
+    email: user.email,
+    group: user.group || '',
+    role: user.role,
+    password: '',
+    confirmPassword: ''
+  }
+  showUserDialog.value = true
+  nextTick(() => userFormRef.value?.resetValidation())
+}
+
+const closeUserDialog = () => {
+  showUserDialog.value = false
+  editingUser.value = null
+  nextTick(() => userFormRef.value?.resetValidation())
+}
+
+const saveUser = async () => {
+  if (!userFormValid.value) return
+  
+  savingUser.value = true
+  try {
+    if (editingUser.value) {
+      // РЕДАКТИРОВАНИЕ
+      const payload = {
+        name: userForm.value.name,
+        email: userForm.value.email,
+        group: userForm.value.group,
+        role: userForm.value.role
+      }
+      
+      console.log('✏️ Редактируем пользователя:', editingUser.value.id, payload)
+      await apiPut(`/users/${editingUser.value.id}`, payload)
+      
+      // Обновляем в локальном списке
+      const index = users.value.findIndex(u => u.id === editingUser.value.id)
+      if (index > -1) {
+        users.value[index] = { ...users.value[index], ...payload }
+      }
+      
+      showNotification('Пользователь успешно обновлен', 'success')
+    } else {
+      // СОЗДАНИЕ НОВОГО ПОЛЬЗОВАТЕЛЯ
+      const payload = {
+        name: userForm.value.name,
+        email: userForm.value.email,
+        group: userForm.value.group || '',
+        role: userForm.value.role,
+        password: userForm.value.password
+      }
+
+      console.log('🚀 Создаем пользователя:', payload)
+      const response = await apiPost('/users', payload)
+      console.log('📥 Ответ сервера:', response)
+
+      // Создаем объект пользователя
+      const newUser = {
+        id: response?.id || response?._id || Date.now().toString(),
+        name: userForm.value.name,
+        email: userForm.value.email,
+        group: userForm.value.group || '',
+        role: userForm.value.role,
+        createdAt: response?.createdAt || new Date().toISOString()
+      }
+      
+      // Добавляем в начало списка
+      users.value.unshift(newUser)
+      showNotification(`Пользователь "${newUser.name}" создан`, 'success')
+    }
+
+    closeUserDialog()
+  } catch (error) {
+    console.error('❌ Ошибка сохранения:', error)
+    showNotification(
+      `Ошибка: ${error.message || 'Не удалось сохранить'}`,
+      'error',
+      'mdi-alert-circle'
+    )
+  } finally {
+    savingUser.value = false
+  }
+}
+
+const confirmDeleteUser = async user => {
+  if (!confirm(`Вы уверены, что хотите удалить пользователя "${user.name}"?\nЭто действие нельзя отменить.`)) return
+  
+  try {
+    console.log('🗑️ Удаляем пользователя:', user.id, user.name)
+    await apiDelete(`/users/${user.id}`)
+    
+    // Удаляем из локального списка
+    users.value = users.value.filter(u => u.id !== user.id)
+    
+    showNotification(`Пользователь "${user.name}" удален`, 'warning', 'mdi-delete')
+  } catch (error) {
+    console.error('❌ Ошибка удаления:', error)
+    showNotification('Ошибка удаления пользователя', 'error', 'mdi-alert-circle')
+  }
+}
+
+// === ЭКЗАМЕНЫ ===
+const editExam = exam => {
+  showNotification(`Редактирование экзамена "${exam.subject}"`, 'info', 'mdi-pencil')
+  console.log('Редактирование экзамена:', exam)
+}
+
+const confirmDeleteExam = async exam => {
+  if (!confirm(`Удалить экзамен "${exam.subject}"?`)) return
+  
+  try {
+    await apiDelete(`/exams/${exam.id}`)
+    exams.value = exams.value.filter(e => e.id !== exam.id)
+    showNotification(`Экзамен "${exam.subject}" удален`, 'warning', 'mdi-delete')
+  } catch (error) {
+    console.error('Ошибка удаления экзамена:', error)
+    showNotification('Ошибка удаления экзамена', 'error', 'mdi-alert-circle')
+  }
+}
+
+// === СТАРТ ===
+onMounted(() => {
+  console.log('🚀 Админ-панель запущена')
+  loadAllData()
+  
+  // Слушаем события обновления пользователей
+  window.addEventListener('users:updated', () => {
+    console.log('🔔 Получено событие users:updated')
+    loadUsers()
+  })
+})
+</script>
+
+<style scoped>
+.super-admin-panel {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.header-text {
+  flex: 1;
+  min-width: 300px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  height: 44px;
+  border-radius: 10px;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #1976d2 0%, #2196f3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stats-row {
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  cursor: default;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card-blue {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-left: 4px solid #1976d2;
+}
+
+.stat-card-orange {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-left: 4px solid #f57c00;
+}
+
+.stat-card-green {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-left: 4px solid #388e3c;
+}
+
+.stat-card-red {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+  border-left: 4px solid #d32f2f;
+}
+
+.stat-icon {
+  opacity: 0.9;
+}
+
+.main-card {
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+
+.add-btn {
+  border-radius: 12px;
+  height: 48px;
+}
+
+.data-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.data-table :deep(.v-data-table__th) {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.8rem;
+}
+
+.data-table :deep(.v-data-table__tr) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.v-data-table__tr:hover) {
+  background-color: rgba(33, 150, 243, 0.04);
+}
+
+.dialog-card {
+  border-radius: 20px;
+}
+
+.dialog-header {
+  padding: 24px 24px 16px 24px;
+  background: linear-gradient(90deg, #1976d2 0%, #2196f3 100%);
+  color: white;
+}
+
+.dialog-header .v-icon {
+  color: white !important;
+}
+
+/* Адаптивность */
+@media (max-width: 960px) {
+  .header-content {
+    flex-direction: column;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .gradient-text {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .super-admin-panel {
+    padding: 16px;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+  }
+  
+  .action-btn {
+    width: 100%;
+  }
+  
+  .data-table :deep(table) {
+    display: block;
+    overflow-x: auto;
+  }
+}
+</style>
