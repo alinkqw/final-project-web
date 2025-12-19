@@ -3,17 +3,8 @@
     <!-- ХЕДЕР -->
     <div class="header-section">
       <div class="header-content">
-        <v-btn
-          icon
-          @click="goBack"
-          class="back-btn"
-          size="large"
-          color="white"
-        >
-          <v-icon>mdi-arrow-left</v-icon>
-        </v-btn>
         <div class="header-text">
-          <h1 class="header-title gradient-text">📊 Результаты теста</h1>
+          <h1 class="header-title gradient-text">Результаты теста</h1>
           <p class="header-subtitle" v-if="test">
             {{ test.title }}
           </p>
@@ -21,10 +12,8 @@
       </div>
     </div>
 
-    <!-- ОСНОВНЫЕ РЕЗУЛЬТАТЫ -->
     <div class="main-results-section">
       <v-card class="results-card gradient-card">
-        <!-- ОБЩАЯ СТАТИСТИКА -->
         <div class="overall-stats">
           <div class="stat-item primary">
             <div class="stat-icon"></div>
@@ -120,7 +109,7 @@
 
         <!-- РАЗБИВКА ПО ТЕМАМ -->
         <div class="topics-breakdown" v-if="topics.length > 0">
-          <h3 class="breakdown-title">📚 Результаты по темам</h3>
+          <h3 class="breakdown-title">Результаты по темам</h3>
           <div class="topics-list">
             <div
               v-for="(topic, index) in topics"
@@ -1004,7 +993,6 @@ const shareToVK = () => {
   line-height: 1.6;
 }
 
-/* КНОПКИ ДЕЙСТВИЙ */
 .action-buttons {
   max-width: 1400px;
   margin: 0 auto 40px;
@@ -1072,7 +1060,6 @@ const shareToVK = () => {
   margin-top: 20px;
 }
 
-/* АДАПТИВНОСТЬ */
 @media (max-width: 768px) {
   .header-section {
     padding: 30px 16px 24px;
@@ -1157,7 +1144,6 @@ const shareToVK = () => {
   }
 }
 
-/* Анимация появления */
 .question-review-card,
 .stat-item,
 .topic-item {
@@ -1176,7 +1162,6 @@ const shareToVK = () => {
   }
 }
 
-/* Задержки для последовательной анимации */
 .question-review-card:nth-child(1) { animation-delay: 0.1s; }
 .question-review-card:nth-child(2) { animation-delay: 0.2s; }
 .question-review-card:nth-child(3) { animation-delay: 0.3s; }

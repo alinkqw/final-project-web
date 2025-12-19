@@ -1,7 +1,7 @@
 <template>
   <div class="profile-page">
     <div class="header-section">
-      <h1 class="header-title gradient-text"> Мой профиль</h1>
+      <h1 class="header-title gradient-text">Мой профиль</h1>
       <p class="header-subtitle">
         Управление аккаунтом и настройками
       </p>
@@ -15,11 +15,8 @@
       </v-btn>
     </div>
 
-
     <div class="profile-container">
-
       <div class="profile-left">
-
         <v-card class="profile-card gradient-card gradient-border">
           <div class="profile-header">
             <div class="avatar-container">
@@ -41,7 +38,6 @@
                 />
               </v-avatar>
               
-
               <v-btn
                 icon
                 class="avatar-edit-btn"
@@ -51,7 +47,6 @@
               </v-btn>
             </div>
             
-
             <div class="profile-info">
               <h2 class="user-name">{{ userStore.user?.name || 'Пользователь' }}</h2>
               <v-chip 
@@ -65,43 +60,62 @@
               
               <div class="user-email">
                 <v-icon size="small" class="mr-1">mdi-email</v-icon>
-                {{ userStore.user?.email || 'email@example.com' }}
+                {{ userStore.user?.email || 'Не указан' }}
+              </div>
+              
+              <div v-if="userStore.user?.group" class="user-group">
+                <v-icon size="small" class="mr-1">mdi-account-group</v-icon>
+                Группа: {{ userStore.user.group }}
               </div>
             </div>
           </div>
 
-
           <div class="stats-section">
-            <h3 class="stats-title"> Статистика</h3>
+            <h3 class="stats-title">Статистика</h3>
             <v-divider class="mb-4" />
             
             <div class="stats-grid">
-              <div class="stat-item">
+              <div class="stat-item" v-if="userStats.completedTests > 0">
                 <div class="stat-value">{{ userStats.completedTests }}</div>
                 <div class="stat-label">Пройдено тестов</div>
               </div>
-              <div class="stat-item">
+              <div class="stat-item" v-else>
+                <div class="stat-value">0</div>
+                <div class="stat-label">Пройдено тестов</div>
+              </div>
+              
+              <div class="stat-item" v-if="userStats.averageScore > 0">
                 <div class="stat-value">{{ userStats.averageScore }}%</div>
                 <div class="stat-label">Средний балл</div>
               </div>
+              <div class="stat-item" v-else>
+                <div class="stat-value">0%</div>
+                <div class="stat-label">Средний балл</div>
+              </div>
+              
               <div class="stat-item">
                 <div class="stat-value">{{ formatTime(userStats.totalTime) }}</div>
                 <div class="stat-label">Времени потрачено</div>
               </div>
-              <div class="stat-item">
+              
+              <div class="stat-item" v-if="userStats.completedTests > 0">
                 <div class="stat-value">{{ userStats.successRate }}%</div>
+                <div class="stat-label">Успешность</div>
+              </div>
+              <div class="stat-item" v-else>
+                <div class="stat-value">0%</div>
                 <div class="stat-label">Успешность</div>
               </div>
             </div>
           </div>
 
-          <div class="activity-section">
-            <h3 class="activity-title"> Последняя активность</h3>
+          <div class="activity-section" v-if="realActivities.length > 0">
+            <h3 class="activity-title">Последняя активность</h3>
             <v-divider class="mb-4" />
             
             <v-timeline side="end" density="compact">
               <v-timeline-item
-                v-for="activity in recentActivities"
+                v-for="activity in realActivities.slice(0, 4)"
                 :key="activity.id"
                 :dot-color="activity.color"
                 size="small"
@@ -117,12 +131,28 @@
               </v-timeline-item>
             </v-timeline>
           </div>
+          
+          <div class="activity-section" v-else>
+            <h3 class="activity-title">Активность</h3>
+            <v-divider class="mb-4" />
+            <div class="no-activity">
+              <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-calendar-blank</v-icon>
+              <p class="no-activity-text">У вас пока нет активности</p>
+              <v-btn 
+                to="/tests" 
+                color="primary" 
+                variant="outlined" 
+                size="small"
+                class="mt-2"
+              >
+                Пройти первый тест
+              </v-btn>
+            </div>
+          </div>
         </v-card>
       </div>
 
-
       <div class="profile-right">
-
         <v-card class="settings-card gradient-card gradient-border">
           <h3 class="settings-title">Настройки профиля</h3>
           <v-divider class="mb-6" />
@@ -138,6 +168,7 @@
                 hide-details="auto"
                 class="dark-input"
                 color="primary"
+                :rules="nameRules"
               />
             </div>
 
@@ -152,6 +183,20 @@
                 hide-details="auto"
                 class="dark-input"
                 color="primary"
+              />
+            </div>
+            
+            <div class="form-field" v-if="userStore.user?.group">
+              <v-text-field
+                :model-value="userStore.user.group"
+                label="Группа"
+                prepend-inner-icon="mdi-account-group-outline"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                class="dark-input"
+                color="primary"
+                readonly
               />
             </div>
 
@@ -173,46 +218,6 @@
               />
             </div>
 
-            <div class="form-field">
-              <v-select
-                v-model="editForm.theme"
-                label="Тема интерфейса"
-                prepend-inner-icon="mdi-palette-outline"
-                :items="themeOptions"
-                variant="outlined"
-                density="comfortable"
-                hide-details="auto"
-                class="dark-input"
-                color="primary"
-              />
-            </div>
-
-            <div class="notifications-section">
-              <h4 class="notifications-title">🔔 Уведомления</h4>
-              <v-switch
-                v-model="editForm.notifications.email"
-                label="Email уведомления"
-                color="primary"
-                hide-details
-                class="notification-switch"
-              />
-              <v-switch
-                v-model="editForm.notifications.news"
-                label="Новости и обновления"
-                color="primary"
-                hide-details
-                class="notification-switch"
-              />
-              <v-switch
-                v-model="editForm.notifications.reminders"
-                label="Напоминания о тестах"
-                color="primary"
-                hide-details
-                class="notification-switch"
-              />
-            </div>
-
-            <!-- КНОПКИ -->
             <div class="actions-section">
               <v-btn
                 type="submit"
@@ -234,6 +239,7 @@
                 block
                 size="large"
                 class="reset-btn mt-3"
+                :disabled="!hasChanges"
               >
                 <v-icon start>mdi-restore</v-icon>
                 ОТМЕНИТЬ
@@ -281,7 +287,7 @@
             </v-btn>
             
             <v-btn
-              @click="goToAnalytics"
+              @click="goToDashboard"
               variant="outlined"
               color="warning"
               block
@@ -293,7 +299,6 @@
         </v-card>
       </div>
     </div>
-
 
     <v-dialog v-model="avatarDialog" max-width="500">
       <v-card class="avatar-dialog gradient-card gradient-border">
@@ -324,6 +329,7 @@
             class="mt-4 dark-input"
             variant="outlined"
             density="comfortable"
+            :rules="urlRules"
           />
         </v-card-text>
         
@@ -334,13 +340,13 @@
             @click="updateAvatar" 
             color="primary"
             :disabled="!selectedAvatar && !customAvatarUrl"
+            :loading="avatarLoading"
           >
             Сохранить
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-
 
     <v-snackbar
       v-model="snackbar.show"
@@ -369,55 +375,31 @@ import { useUserStore } from '@/stores/user'
 const router = useRouter()
 const userStore = useUserStore()
 
-
 const loading = ref(false)
+const avatarLoading = ref(false)
 const showPassword = ref(false)
 const avatarDialog = ref(false)
 const selectedAvatar = ref(null)
 const customAvatarUrl = ref('')
 
-
 const editForm = ref({
   name: '',
   email: '',
-  newPassword: '',
-  theme: 'dark',
-  notifications: {
-    email: true,
-    news: true,
-    reminders: true
-  }
+  newPassword: ''
 })
-
 
 const userStats = ref({
-  completedTests: 12,
-  averageScore: 85,
-  totalTime: 5480, // минуты
-  successRate: 92
+  completedTests: 0,
+  averageScore: 0,
+  totalTime: 0,
+  successRate: 0
 })
-
-
-const recentActivities = ref([
-  { id: 1, text: 'Пройден тест "JavaScript Basic"', time: '2 часа назад', icon: 'mdi-check-circle', color: 'success' },
-  { id: 2, text: 'Начат тест "React Advanced"', time: 'Вчера', icon: 'mdi-play-circle', color: 'primary' },
-  { id: 3, text: 'Обновлен профиль', time: '2 дня назад', icon: 'mdi-account-edit', color: 'info' },
-  { id: 4, text: 'Достижение "Мастер тестов"', time: 'Неделю назад', icon: 'mdi-trophy', color: 'warning' }
-])
-
 
 const snackbar = ref({
   show: false,
   message: '',
   color: 'success'
 })
-
-
-const themeOptions = [
-  { title: 'Тёмная', value: 'dark' },
-  { title: 'Светлая', value: 'light' },
-  { title: 'Системная', value: 'system' }
-]
 
 const avatarOptions = [
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
@@ -426,15 +408,23 @@ const avatarOptions = [
   'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80'
 ]
 
+const nameRules = [
+  v => !!v || 'Имя обязательно',
+  v => (v && v.length >= 2) || 'Минимум 2 символа'
+]
 
 const emailRules = [
-  v => !v || /.+@.+\..+/.test(v) || 'Email некорректен'
+  v => !!v || 'Email обязателен',
+  v => /.+@.+\..+/.test(v) || 'Email некорректен'
 ]
 
 const newPasswordRules = [
   v => !v || v.length >= 6 || 'Минимум 6 символов'
 ]
 
+const urlRules = [
+  v => !v || /^https?:\/\/.+/.test(v) || 'Некорректная ссылка'
+]
 
 const isAdmin = computed(() => {
   return userStore.isAdmin && userStore.isAdmin()
@@ -444,10 +434,39 @@ const hasChanges = computed(() => {
   const user = userStore.user || {}
   return editForm.value.name !== user.name ||
     editForm.value.email !== user.email ||
-    editForm.value.newPassword ||
-    editForm.value.theme !== 'dark'
+    editForm.value.newPassword
 })
 
+const realActivities = computed(() => {
+  const activities = []
+  const testResults = JSON.parse(localStorage.getItem('testResults') || '[]')
+  
+  testResults.slice(0, 5).forEach(result => {
+    const date = new Date(result.date)
+    const timeAgo = getTimeAgo(date)
+    
+    activities.push({
+      id: result.id || Date.now() + Math.random(),
+      text: `Пройден тест "${result.testTitle}" - ${result.percentage}%`,
+      time: timeAgo,
+      icon: 'mdi-check-circle',
+      color: result.percentage >= 60 ? 'success' : 'error'
+    })
+  })
+  
+  if (userStore.user?.createdAt) {
+    const joinDate = new Date(userStore.user.createdAt)
+    activities.push({
+      id: 'join',
+      text: 'Регистрация в системе',
+      time: getTimeAgo(joinDate),
+      icon: 'mdi-account-plus',
+      color: 'info'
+    })
+  }
+  
+  return activities
+})
 
 const getRoleColor = () => {
   return isAdmin.value ? 'warning' : 'primary'
@@ -462,25 +481,87 @@ const getRoleText = () => {
 }
 
 const formatTime = (minutes) => {
+  if (minutes === 0) return '0м'
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   return hours > 0 ? `${hours}ч ${mins}м` : `${mins}м`
 }
 
+const getTimeAgo = (date) => {
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+  
+  if (diffDays > 0) {
+    return `${diffDays} дн. назад`
+  } else if (diffHours > 0) {
+    return `${diffHours} час. назад`
+  } else if (diffMins > 0) {
+    return `${diffMins} мин. назад`
+  } else {
+    return 'только что'
+  }
+}
+
+const loadUserStats = () => {
+  try {
+    const testResults = JSON.parse(localStorage.getItem('testResults') || '[]')
+    const stats = {
+      completedTests: testResults.length,
+      averageScore: 0,
+      totalTime: 0,
+      successRate: 0
+    }
+    
+    if (testResults.length > 0) {
+      const totalScore = testResults.reduce((sum, result) => sum + (result.percentage || 0), 0)
+      stats.averageScore = Math.round(totalScore / testResults.length)
+      
+      const totalTime = testResults.reduce((sum, result) => sum + (result.timeSpent || 0), 0)
+      stats.totalTime = totalTime
+      
+      const successfulTests = testResults.filter(result => (result.percentage || 0) >= 60).length
+      stats.successRate = Math.round((successfulTests / testResults.length) * 100)
+    }
+    
+    userStats.value = stats
+  } catch (error) {
+    console.error('Ошибка загрузки статистики:', error)
+  }
+}
+
 const updateProfile = async () => {
+  if (!editForm.value.name.trim()) {
+    showSnackbar('Введите имя', 'error')
+    return
+  }
+  
+  if (!editForm.value.email.trim()) {
+    showSnackbar('Введите email', 'error')
+    return
+  }
+  
   loading.value = true
   
   try {
-
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-
     if (userStore.user) {
-      userStore.user.name = editForm.value.name
-      userStore.user.email = editForm.value.email
+      const updates = {
+        name: editForm.value.name.trim(),
+        email: editForm.value.email.trim()
+      }
+      
+      if (editForm.value.newPassword.trim()) {
+        updates.password = editForm.value.newPassword.trim()
+      }
+      
+      Object.assign(userStore.user, updates)
+      
+      localStorage.setItem('currentUser', JSON.stringify(userStore.user))
+      
+      showSnackbar('Профиль успешно обновлен', 'success')
     }
-    
-    showSnackbar('Профиль успешно обновлен', 'success')
   } catch (error) {
     showSnackbar('Ошибка при обновлении профиля', 'error')
   } finally {
@@ -488,15 +569,37 @@ const updateProfile = async () => {
   }
 }
 
-const updateAvatar = () => {
-  const avatarUrl = customAvatarUrl.value || selectedAvatar.value
-  if (avatarUrl && userStore.user) {
-    userStore.user.avatar = avatarUrl
-    showSnackbar('Аватар обновлен', 'success')
+const updateAvatar = async () => {
+  const avatarUrl = customAvatarUrl.value.trim() || selectedAvatar.value
+  if (!avatarUrl) {
+    showSnackbar('Выберите аватар или введите ссылку', 'error')
+    return
   }
-  avatarDialog.value = false
-  customAvatarUrl.value = ''
-  selectedAvatar.value = null
+  
+  avatarLoading.value = true
+  
+  try {
+    const testImage = new Image()
+    testImage.src = avatarUrl
+    
+    await new Promise((resolve, reject) => {
+      testImage.onload = resolve
+      testImage.onerror = () => reject(new Error('Не удалось загрузить изображение'))
+    })
+    
+    if (userStore.user) {
+      userStore.user.avatar = avatarUrl
+      localStorage.setItem('currentUser', JSON.stringify(userStore.user))
+      showSnackbar('Аватар успешно обновлен', 'success')
+      avatarDialog.value = false
+      customAvatarUrl.value = ''
+      selectedAvatar.value = null
+    }
+  } catch (error) {
+    showSnackbar('Неверная ссылка на изображение', 'error')
+  } finally {
+    avatarLoading.value = false
+  }
 }
 
 const resetForm = () => {
@@ -504,13 +607,7 @@ const resetForm = () => {
   editForm.value = {
     name: user.name || '',
     email: user.email || '',
-    newPassword: '',
-    theme: 'dark',
-    notifications: {
-      email: true,
-      news: true,
-      reminders: true
-    }
+    newPassword: ''
   }
 }
 
@@ -527,8 +624,8 @@ const goToUsers = () => {
   router.push('/admin/users')
 }
 
-const goToAnalytics = () => {
-  router.push('/admin/analytics')
+const goToDashboard = () => {
+  router.push('/dashboard')
 }
 
 const onAvatarError = (event) => {
@@ -542,34 +639,27 @@ const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
 
-
 onMounted(() => {
   const user = userStore.user || {}
   editForm.value = {
     name: user.name || '',
     email: user.email || '',
-    newPassword: '',
-    theme: 'dark',
-    notifications: {
-      email: true,
-      news: true,
-      reminders: true
-    }
+    newPassword: ''
   }
+  
+  loadUserStats()
 })
 </script>
 
 <style scoped>
 .profile-page {
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
   background: linear-gradient(135deg, #0a0f1a 0%, #131a2b 100%);
   color: #d1d5db;
   padding: 0;
   margin: 0;
   overflow-x: hidden;
-  position: absolute;
-  left: 0;
 }
 
 .header-section {
@@ -603,7 +693,6 @@ onMounted(() => {
   color: #ffffff;
 }
 
-/* ОСНОВНОЙ КОНТЕЙНЕР ПРОФИЛЯ */
 .profile-container {
   max-width: 1400px;
   margin: 0 auto;
@@ -661,7 +750,6 @@ onMounted(() => {
   transform: scale(1.1);
 }
 
-/* ИНФОРМАЦИЯ ПОЛЬЗОВАТЕЛЯ */
 .profile-info {
   flex: 1;
 }
@@ -675,27 +763,27 @@ onMounted(() => {
 
 .role-chip {
   font-size: 0.75rem;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
-.user-email {
+.user-email,
+.user-group {
   display: flex;
   align-items: center;
   color: #9ca3af;
   font-size: 0.875rem;
+  margin-bottom: 4px;
 }
 
 .stats-section,
-.activity-section,
-.notifications-section {
+.activity-section {
   margin-bottom: 32px;
 }
 
 .stats-title,
 .activity-title,
 .settings-title,
-.admin-title,
-.notifications-title {
+.admin-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: #f3f4f6;
@@ -750,6 +838,16 @@ onMounted(() => {
   font-size: 0.75rem;
 }
 
+.no-activity {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.no-activity-text {
+  color: #9ca3af;
+  margin-bottom: 16px;
+}
+
 .settings-form {
   animation: fadeInUp 0.6s ease-out;
 }
@@ -794,15 +892,6 @@ onMounted(() => {
 
 .dark-input :deep(.v-field--focused .v-icon) {
   color: #3b82f6 !important;
-}
-
-.notification-switch {
-  margin-bottom: 8px;
-}
-
-.notification-switch :deep(.v-label) {
-  color: #e5e7eb !important;
-  font-size: 0.875rem;
 }
 
 .actions-section {

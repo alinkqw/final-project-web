@@ -1,6 +1,5 @@
 <template>
   <div class="profile-page">
-    <!-- ХЕДЕР -->
     <div class="header-section">
       <div class="header-content">
         <div class="header-title-section">
@@ -26,11 +25,9 @@
       </div>
     </div>
 
-    <!-- ОСНОВНОЙ КОНТЕЙНЕР -->
     <div class="profile-container">
-      <!-- ЛЕВАЯ КОЛОНКА: ИНФОРМАЦИЯ -->
       <div class="profile-left">
-        <!-- КАРТОЧКА ПРОФИЛЯ -->
+      
         <v-card class="profile-card gradient-card">
           <div class="profile-header">
             <div class="avatar-container">
@@ -53,7 +50,6 @@
                 />
               </v-avatar>
               
-              <!-- КНОПКА СМЕНЫ АВАТАРА -->
               <v-btn
                 @click="triggerAvatarUpload"
                 color="primary"
@@ -64,7 +60,6 @@
                 <v-icon>mdi-camera</v-icon>
               </v-btn>
               
-              <!-- Скрытый input для загрузки -->
               <input
                 ref="avatarInput"
                 type="file"
@@ -74,7 +69,6 @@
               />
             </div>
             
-            <!-- ИМЯ И СТАТУС -->
             <div class="profile-info">
               <h2 class="user-name">{{ userName }}</h2>
               <v-chip 
@@ -98,7 +92,6 @@
             </div>
           </div>
 
-          <!-- СТАТИСТИКА -->
           <div class="stats-section">
             <h3 class="stats-title">
               <v-icon class="mr-2">mdi-chart-box</v-icon>
@@ -133,9 +126,7 @@
         </v-card>
       </div>
 
-      <!-- ПРАВАЯ КОЛОНКА: НАСТРОЙКИ -->
       <div class="profile-right">
-        <!-- КАРТОЧКА НАСТРОЕК -->
         <v-card class="settings-card gradient-card">
           <h3 class="settings-title">
             <v-icon class="mr-2">mdi-cog</v-icon>
@@ -621,7 +612,6 @@ onMounted(() => {
   margin-top: 4px;
 }
 
-/* Статистика */
 .stats-title {
   font-size: 1.3rem;
   font-weight: 600;
@@ -667,7 +657,6 @@ onMounted(() => {
   color: #b0b0b0;
 }
 
-/* Настройки */
 .settings-title, .admin-title {
   font-size: 1.3rem;
   font-weight: 600;

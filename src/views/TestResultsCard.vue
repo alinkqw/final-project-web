@@ -1,6 +1,5 @@
 <template>
   <div class="test-page" v-if="test">
-    <!-- Шапка с таймером -->
     <v-app-bar color="primary" prominent class="test-header">
       <v-btn icon @click="goBack" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
@@ -30,10 +29,17 @@
           rounded
         />
       </div>
+
+      <!-- Кнопка отладки -->
+      <div class="debug-actions" v-if="debugMode">
+        <v-btn @click="showDebugInfo" color="warning" size="small">
+          <v-icon left>mdi-bug</v-icon>
+          Отладка
+        </v-btn>
+      </div>
     </v-app-bar>
 
     <v-container class="question-container">
-      <!-- Если тест загружается -->
       <div v-if="loading" class="text-center py-16">
         <v-progress-circular
           indeterminate
@@ -336,7 +342,6 @@
           </v-card-title>
 
           <div class="answers-container pa-5 pt-0">
-            <!-- Одиночный выбор -->
             <v-radio-group 
               v-if="currentQuestion.type === 'single'"
               v-model="selectedAnswers[currentQuestionNumber]"
@@ -492,8 +497,10 @@ const timerInterval = ref(null)
 const testCompleted = ref(false)
 const reviewingAnswers = ref(false)
 
+// Переменные для отладки
+const debugMode = ref(true)
+
 onMounted(() => {
-  console.log('TestView mounted')
   loadTestData()
 })
 
@@ -504,7 +511,6 @@ onUnmounted(() => {
 watch(
   () => route.query,
   () => {
-    console.log('Параметры маршрута изменились:', route.query)
     if (route.query.testId) {
       restartTestWithNewId()
     }
@@ -518,70 +524,52 @@ const restartTestWithNewId = () => {
 }
 
 const loadTestData = () => {
-  console.log('=== ЗАГРУЗКА ТЕСТА В TestView ===')
-  console.log('Route query:', route.query)
-  console.log('Route params:', route.params)
-  
   let testId
   
   if (route.query.testId) {
     testId = parseInt(route.query.testId)
-    console.log('Получен testId из query:', testId)
   }
   else if (route.query.originalTestId) {
     testId = parseInt(route.query.originalTestId)
-    console.log('Получен originalTestId из query:', testId)
   }
   else if (route.params.id) {
     const paramId = parseInt(route.params.id)
     if (paramId > 6) {
       testId = ((paramId - 1) % 6) + 1
-      console.log('ID карточки', paramId, ' => testId:', testId)
     } else {
       testId = paramId
-      console.log('ID теста из params:', testId)
     }
   }
   
   if (!testId || testId < 1 || testId > 6) {
-    console.warn('Неверный testId, используем первый тест')
     testId = 1
   }
-  
-  console.log('Ищем тест с ID:', testId)
-  console.log('Доступные тесты:', testsData.tests.map(t => ({ id: t.id, title: t.title })))
   
   const foundTest = testsData.tests.find(t => t.id === testId)
   
   if (!foundTest) {
-    console.error('❌ Тест не найден! Используем первый тест')
     testId = 1
   }
   
   const targetTest = testsData.tests.find(t => t.id === testId) || testsData.tests[0]
   
   if (!targetTest) {
-    console.error('❌ Нет тестов в базе данных!')
     alert('Ошибка загрузки тестов. Пожалуйста, вернитесь к списку тестов.')
     router.push('/tests')
     return
   }
   
-  console.log('✅ Найден тест:', targetTest.title, 'ID:', targetTest.id)
-  
   test.value = {
     ...targetTest,
-    id: targetTest.id, // Важно сохранить правильный ID
+    id: targetTest.id,
     title: route.query.title || targetTest.title,
     timeLimit: (parseInt(route.query.timeLimit) || Math.floor((targetTest.timeLimit || 1800) / 60)) * 60,
     description: targetTest.description
   }
   
   questions.value = targetTest.questions || []
-  console.log('Загружено вопросов:', questions.value.length)
   
   if (questions.value.length === 0) {
-    console.error('❌ В тесте нет вопросов!')
     alert('В этом тесте нет вопросов. Пожалуйста, выберите другой тест.')
     router.push('/tests')
     return
@@ -597,13 +585,6 @@ const loadTestData = () => {
   startTimer()
   
   loading.value = false
-  
-  console.log('✅ Тест загружен успешно!')
-  console.log('- Название:', test.value.title)
-  console.log('- ID теста:', test.value.id)
-  console.log('- Вопросов:', questions.value.length)
-  console.log('- Время:', test.value.timeLimit, 'сек')
-  console.log('- Текущий вопрос:', currentQuestionNumber.value + 1)
 }
 
 const isAnswerCorrect = (questionIndex) => {
@@ -781,6 +762,7 @@ const getScoreDescription = () => {
 
 const saveTestResults = () => {
   const result = {
+    id: Date.now().toString(),
     testId: test.value.id,
     testTitle: test.value.title,
     date: new Date().toISOString(),
@@ -791,10 +773,8 @@ const saveTestResults = () => {
     answers: selectedAnswers.value,
     multipleAnswers: selectedAnswersMultiple.value,
     cardId: route.params.id,
-    variantNumber: route.query.variantNumber
+    variantNumber: route.query.variantNumber || 1
   }
-  
-  console.log('Сохранение результатов:', result)
   
   const results = JSON.parse(localStorage.getItem('testResults') || '[]')
   results.push(result)
@@ -822,6 +802,42 @@ const restartTest = () => {
     startTimer()
   }
 }
+
+// Функция для отладки
+const showDebugInfo = () => {
+  const allResults = JSON.parse(localStorage.getItem('testResults') || '[]')
+  const testResult = {
+    id: Date.now().toString(),
+    testId: test.value.id,
+    testTitle: test.value.title,
+    date: new Date().toISOString(),
+    correctAnswers: correctAnswers.value,
+    totalQuestions: questions.value.length,
+    percentage: scorePercentage.value,
+    timeSpent: (test.value.timeLimit || 1800) - timeLeft.value,
+    answers: selectedAnswers.value,
+    multipleAnswers: selectedAnswersMultiple.value,
+    cardId: route.params.id,
+    variantNumber: route.query.variantNumber || 1
+  }
+  
+  console.log('=== ОТЛАДОЧНАЯ ИНФОРМАЦИЯ ===')
+  console.log('Текущий результат:', testResult)
+  console.log('Всего результатов в localStorage:', allResults.length)
+  console.log('Все результаты:', allResults)
+  console.log('Route params:', route.params)
+  console.log('Route query:', route.query)
+  console.log('Текущий тест:', test.value)
+  console.log('Всего вопросов:', questions.value.length)
+  console.log('Текущий вопрос:', currentQuestionNumber.value + 1)
+  console.log('Выбранные ответы (single):', selectedAnswers.value)
+  console.log('Выбранные ответы (multiple):', selectedAnswersMultiple.value)
+  console.log('Время осталось:', timeLeft.value, 'секунд')
+  console.log('Тест завершен:', testCompleted.value)
+  console.log('Режим просмотра:', reviewingAnswers.value)
+  
+  alert(`Всего результатов в localStorage: ${allResults.length}\n\nПосмотрите консоль браузера для деталей`)
+}
 </script>
 
 <style scoped>
@@ -835,7 +851,6 @@ const restartTest = () => {
 .test-header {
   background: rgba(30, 41, 59, 0.95) !important;
   backdrop-filter: blur(10px);
-
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -845,6 +860,10 @@ const restartTest = () => {
 
 .progress-container {
   min-width: 150px;
+}
+
+.debug-actions {
+  margin-left: 10px;
 }
 
 .question-container {
@@ -905,19 +924,16 @@ const restartTest = () => {
   margin-left: 12px;
 }
 
-/* Кнопки навигации */
 .navigation-buttons {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-/* Быстрая навигация */
 .quick-nav-buttons {
   gap: 8px;
 }
 
-/* Результаты теста */
 .score-circle {
   position: relative;
   margin: 0 auto;
@@ -946,7 +962,6 @@ const restartTest = () => {
   margin: 0 auto;
 }
 
-/* Страница просмотра ответов */
 .review-question-card {
   margin-bottom: 16px;
 }
@@ -994,7 +1009,6 @@ const restartTest = () => {
   flex-shrink: 0;
 }
 
-/* Мобильная адаптация */
 @media (max-width: 768px) {
   .test-header :deep(.v-toolbar__content) {
     flex-wrap: wrap;
@@ -1002,10 +1016,16 @@ const restartTest = () => {
   }
   
   .timer-container,
-  .progress-container {
+  .progress-container,
+  .debug-actions {
     min-width: auto;
     margin-top: 8px;
     width: 100%;
+  }
+  
+  .debug-actions {
+    display: flex;
+    justify-content: center;
   }
   
   .question-container {
