@@ -21,5 +21,7 @@ export default defineConfig({
         }
       }
     }
-  }
+  },
+  // Важно для деплоя на Vercel
+  base: './'
 })

@@ -1,1 +1,8 @@
+# Single Page App redirects
 /* /index.html 200
+
+# API redirects (if any)
+/api/* https://api.example.com/:splat 200
+
+# Legacy redirects
+/blog/* /news/:splat 301
