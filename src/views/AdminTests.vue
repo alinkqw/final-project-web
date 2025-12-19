@@ -48,109 +48,117 @@
 
     <!-- Таблица тестов -->
     <v-card class="tests-table-card">
-      <v-table hover>
-        <thead>
-          <tr>
-            <th class="text-left" width="60">ID</th>
-            <th class="text-left">Название теста</th>
-            <th class="text-left" width="120">Вопросы</th>
-            <th class="text-left" width="120">Время</th>
-            <th class="text-left" width="120">Сложность</th>
-            <th class="text-left" width="120">Статус</th>
-            <th class="text-left" width="180">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr 
-            v-for="test in filteredTests" 
-            :key="test.id"
-            :class="{ 'active-row': test.id === editingTest.id }"
-          >
-            <td class="text-center font-weight-bold">
-              {{ test.id }}
-            </td>
-            <td>
-              <div class="test-info">
-                <div class="test-title">{{ test.title }}</div>
-                <div class="test-subtitle">{{ test.subtitle }}</div>
-                <div class="test-category">
-                  <v-chip size="x-small" color="info" variant="outlined">
-                    {{ test.category }}
-                  </v-chip>
-                </div>
-              </div>
-            </td>
-            <td class="text-center">
-              {{ test.questions }}
-            </td>
-            <td class="text-center">
-              {{ test.timeLimit }} мин
-            </td>
-            <td>
-              <v-chip
-                :color="getLevelColor(test.level)"
-                size="small"
-                class="white--text"
-              >
-                {{ capitalize(test.level) }}
-              </v-chip>
-            </td>
-            <td>
-              <v-chip
-                :color="getStatusColor(test)"
-                size="small"
-                variant="outlined"
-              >
-                {{ getStatusText(test) }}
-              </v-chip>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <v-btn
-                  size="small"
-                  color="primary"
-                  variant="tonal"
-                  @click="editTest(test)"
-                  class="mr-2"
-                >
-                  <v-icon size="small">mdi-pencil</v-icon>
-                </v-btn>
-                
-                <v-btn
-                  size="small"
-                  color="warning"
-                  variant="tonal"
-                  @click="duplicateTest(test)"
-                  class="mr-2"
-                >
-                  <v-icon size="small">mdi-content-copy</v-icon>
-                </v-btn>
-                
-                <v-btn
-                  size="small"
-                  color="error"
-                  variant="tonal"
-                  @click="deleteTest(test.id)"
-                >
-                  <v-icon size="small">mdi-delete</v-icon>
-                </v-btn>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-      
-      <div v-if="filteredTests.length === 0" class="no-tests">
-        <v-icon size="64" color="grey">mdi-file-question</v-icon>
-        <h3>Тесты не найдены</h3>
-        <p>Создайте первый тест или измените условия поиска</p>
-        <v-btn color="primary" @click="openCreateDialog">
-          <v-icon left>mdi-plus</v-icon>
-          Создать тест
-        </v-btn>
+      <div v-if="loading" class="loading-state">
+        <v-progress-circular indeterminate color="primary" size="64" />
+        <p>Загружаем тесты...</p>
       </div>
+      
+      <template v-else>
+        <v-table hover>
+          <thead>
+            <tr>
+              <th class="text-left" width="60">ID</th>
+              <th class="text-left">Название теста</th>
+              <th class="text-left" width="120">Вопросы</th>
+              <th class="text-left" width="120">Время</th>
+              <th class="text-left" width="120">Сложность</th>
+              <th class="text-left" width="120">Статус</th>
+              <th class="text-left" width="180">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="test in filteredTests" 
+              :key="test.id"
+              :class="{ 'active-row': test.id === editingTest.id }"
+            >
+              <td class="text-center font-weight-bold">
+                {{ test.id }}
+              </td>
+              <td>
+                <div class="test-info">
+                  <div class="test-title">{{ test.title }}</div>
+                  <div class="test-subtitle">{{ test.subtitle }}</div>
+                  <div class="test-category">
+                    <v-chip size="x-small" color="info" variant="outlined">
+                      {{ test.category }}
+                    </v-chip>
+                  </div>
+                </div>
+              </td>
+              <td class="text-center">
+                {{ test.questions }}
+              </td>
+              <td class="text-center">
+                {{ test.timeLimit }} мин
+              </td>
+              <td>
+                <v-chip
+                  :color="getLevelColor(test.level)"
+                  size="small"
+                  class="white--text"
+                >
+                  {{ capitalize(test.level) }}
+                </v-chip>
+              </td>
+              <td>
+                <v-chip
+                  :color="getStatusColor(test)"
+                  size="small"
+                  variant="outlined"
+                >
+                  {{ getStatusText(test) }}
+                </v-chip>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    @click="editTest(test)"
+                    class="mr-2"
+                  >
+                    <v-icon size="small">mdi-pencil</v-icon>
+                  </v-btn>
+                  
+                  <v-btn
+                    size="small"
+                    color="warning"
+                    variant="tonal"
+                    @click="duplicateTest(test)"
+                    class="mr-2"
+                  >
+                    <v-icon size="small">mdi-content-copy</v-icon>
+                  </v-btn>
+                  
+                  <v-btn
+                    size="small"
+                    color="error"
+                    variant="tonal"
+                    @click="deleteTest(test.id)"
+                  >
+                    <v-icon size="small">mdi-delete</v-icon>
+                  </v-btn>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+        
+        <div v-if="filteredTests.length === 0 && !loading" class="no-tests">
+          <v-icon size="64" color="grey">mdi-file-question</v-icon>
+          <h3>Тесты не найдены</h3>
+          <p>Создайте первый тест или измените условия поиска</p>
+          <v-btn color="primary" @click="openCreateDialog">
+            <v-icon left>mdi-plus</v-icon>
+            Создать тест
+          </v-btn>
+        </div>
+      </template>
     </v-card>
 
+    <!-- Диалог редактирования -->
     <v-dialog v-model="showDialog" max-width="800" persistent>
       <v-card class="edit-dialog">
         <v-card-title class="dialog-title">
@@ -165,7 +173,6 @@
         <v-card-text>
           <v-form ref="testForm" v-model="formValid">
             <v-row>
-              <!-- Основная информация -->
               <v-col cols="12">
                 <h3 class="section-title">Основная информация</h3>
               </v-col>
@@ -348,6 +355,7 @@
       </v-card>
     </v-dialog>
 
+    <!-- Диалог удаления -->
     <v-dialog v-model="showDeleteDialog" max-width="500" persistent>
       <v-card>
         <v-card-title class="text-h6">Подтверждение удаления</v-card-title>
@@ -368,6 +376,7 @@
       </v-card>
     </v-dialog>
 
+    <!-- Статистика -->
     <div class="admin-stats">
       <v-card class="stat-card">
         <v-card-title class="stat-title">
@@ -404,6 +413,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import axios from 'axios'
+import testsData from '@/data/tests.json'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -463,7 +473,10 @@ const categories = [
   'algorithms',
   'databases',
   'exam',
-  'general'
+  'general',
+  'python',
+  'javascript',
+  'html-css'
 ]
 
 const suggestedTags = [
@@ -523,22 +536,83 @@ onMounted(async () => {
 const loadTests = async () => {
   try {
     loading.value = true
-    console.log('Загружаем тесты для админ-панели...')
+    console.log('🔄 Загружаем тесты для админ-панели...')
     
-    // Загружаем тесты из localStorage или создаем начальные
+    // 1. Пробуем загрузить из основного источника tests.json
+    try {
+      console.log('📂 Импортируем тесты из tests.json')
+      
+      if (testsData && testsData.tests && Array.isArray(testsData.tests)) {
+        console.log(`✅ Найдено ${testsData.tests.length} тестов в tests.json`)
+        
+        // Преобразуем в формат для админки
+        tests.value = testsData.tests.map(test => {
+          // Определяем категорию на основе заголовка
+          let category = 'programming'
+          if (test.title.includes('Python')) category = 'python'
+          if (test.title.includes('JavaScript')) category = 'javascript'
+          if (test.title.includes('HTML') || test.title.includes('CSS')) category = 'html-css'
+          if (test.title.includes('Алгоритмы')) category = 'algorithms'
+          if (test.title.includes('Базы данных')) category = 'databases'
+          if (test.title.includes('ЕГЭ')) category = 'exam'
+          
+          // Определяем уровень
+          let level = 'medium'
+          if (test.level === 'новичок') level = 'easy'
+          if (test.level === 'средний') level = 'medium'
+          if (test.level === 'экзамен') level = 'hard'
+          
+          return {
+            id: test.id,
+            title: test.title,
+            subtitle: test.description,
+            questions: test.questions?.length || test.questionsCount || 15,
+            timeLimit: Math.floor((test.timeLimit || 1800) / 60), // секунды -> минуты
+            level: level,
+            category: category,
+            image: presetImages[(test.id - 1) % presetImages.length],
+            description: test.description,
+            isExternal: false,
+            externalUrl: '',
+            tags: [test.level, test.icon || '📚'],
+            active: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        })
+        
+        console.log(`✅ Преобразовано ${tests.value.length} тестов для админки`)
+        saveTestsToLocalStorage()
+        return
+      } else {
+        console.warn('❌ tests.json не содержит массив tests')
+      }
+    } catch (importError) {
+      console.warn('❌ Ошибка импорта tests.json:', importError)
+    }
+    
+    // 2. Fallback на localStorage
     const savedTests = localStorage.getItem('admin_tests')
-    
     if (savedTests) {
       tests.value = JSON.parse(savedTests)
-      console.log('Загружены сохраненные тесты:', tests.value.length)
-    } else {
-      // Если нет сохраненных тестов, загружаем из MockAPI
+      console.log('📁 Загружены сохраненные тесты из localStorage:', tests.value.length)
+      return
+    }
+    
+    // 3. Fallback на MockAPI
+    try {
       await loadFromMockAPI()
+      console.log('🌐 Загружены тесты из MockAPI')
+    } catch (mockapiError) {
+      console.warn('❌ MockAPI не доступен:', mockapiError)
+      // 4. Final fallback: начальные тесты
+      createInitialTests()
+      console.log('📝 Созданы начальные тесты')
     }
     
   } catch (error) {
-    console.error('Ошибка загрузки тестов:', error)
-    await createInitialTests()
+    console.error('💥 Критическая ошибка загрузки тестов:', error)
+    createInitialTests()
   } finally {
     loading.value = false
   }
@@ -547,7 +621,7 @@ const loadTests = async () => {
 const loadFromMockAPI = async () => {
   try {
     const response = await axios.get('https://6937d58d4618a71d77cdc83e.mockapi.io/users')
-    const mockapiData = response.data.slice(0, 20) // Берем 20 тестов для админки
+    const mockapiData = response.data.slice(0, 20)
     
     tests.value = mockapiData.map((item, index) => ({
       id: index + 1,
@@ -579,34 +653,102 @@ const createInitialTests = () => {
   tests.value = [
     {
       id: 1,
-      title: 'Основы Python',
-      subtitle: 'Базовые концепции Python для начинающих',
+      title: '🐍 Python: Основы программирования',
+      subtitle: 'Базовые концепции и синтаксис Python для начинающих',
       questions: 15,
       timeLimit: 30,
       level: 'easy',
-      category: 'programming',
+      category: 'python',
       image: presetImages[0],
-      description: 'Тест по основам программирования на Python',
+      description: 'Базовые концепции и синтаксис Python для начинающих',
       isExternal: false,
       externalUrl: '',
-      tags: ['python', 'beginner', 'programming'],
+      tags: ['python', 'новичок', '🐍'],
       active: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     },
     {
       id: 2,
-      title: 'JavaScript и DOM',
-      subtitle: 'Работа с DOM и событиями в JavaScript',
-      questions: 20,
-      timeLimit: 45,
-      level: 'medium',
-      category: 'web',
+      title: '📜 JavaScript: Основы веб-разработки',
+      subtitle: 'Основы JavaScript для фронтенд разработки',
+      questions: 15,
+      timeLimit: 30,
+      level: 'easy',
+      category: 'javascript',
       image: presetImages[1],
-      description: 'Тест по JavaScript и работе с DOM',
+      description: 'Основы JavaScript для фронтенд разработки',
       isExternal: false,
       externalUrl: '',
-      tags: ['javascript', 'web', 'dom'],
+      tags: ['javascript', 'новичок', '📜'],
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 3,
+      title: '🎨 HTML/CSS: Верстка и стили',
+      subtitle: 'Основы HTML разметки и CSS стилизации',
+      questions: 15,
+      timeLimit: 30,
+      level: 'medium',
+      category: 'html-css',
+      image: presetImages[2],
+      description: 'Основы HTML разметки и CSS стилизации',
+      isExternal: false,
+      externalUrl: '',
+      tags: ['html', 'css', 'средний', '🎨'],
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 4,
+      title: '⚡ Алгоритмы и структуры данных',
+      subtitle: 'Основные алгоритмы и структуры данных',
+      questions: 15,
+      timeLimit: 40,
+      level: 'medium',
+      category: 'algorithms',
+      image: presetImages[3],
+      description: 'Основные алгоритмы и структуры данных',
+      isExternal: false,
+      externalUrl: '',
+      tags: ['алгоритмы', 'средний', '⚡'],
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 5,
+      title: '🗄️ Базы данных и SQL',
+      subtitle: 'Основы работы с базами данных и SQL запросы',
+      questions: 15,
+      timeLimit: 35,
+      level: 'medium',
+      category: 'databases',
+      image: presetImages[4],
+      description: 'Основы работы с базами данных и SQL запросы',
+      isExternal: false,
+      externalUrl: '',
+      tags: ['базы данных', 'sql', 'средний', '🗄️'],
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 6,
+      title: '🎯 Симулятор ЕГЭ по информатике',
+      subtitle: 'Пробный экзамен в формате ЕГЭ',
+      questions: 15,
+      timeLimit: 120,
+      level: 'hard',
+      category: 'exam',
+      image: presetImages[5],
+      description: 'Пробный экзамен в формате ЕГЭ',
+      isExternal: false,
+      externalUrl: '',
+      tags: ['егэ', 'экзамен', 'hard', '🎯'],
       active: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -668,7 +810,6 @@ const saveTest = async () => {
     const now = new Date().toISOString()
     
     if (editingTest.value.id) {
-      // Редактирование существующего теста
       const index = tests.value.findIndex(t => t.id === editingTest.value.id)
       if (index !== -1) {
         tests.value[index] = {
@@ -850,6 +991,21 @@ const onImageError = (event) => {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 16px;
   overflow: hidden;
+  min-height: 400px;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.loading-state p {
+  margin-top: 20px;
+  font-size: 1.1rem;
 }
 
 .tests-table-card :deep(.v-table) {
